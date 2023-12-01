@@ -1,3 +1,4 @@
+use advent_of_code::parse_frag;
 use std::collections::HashMap;
 
 advent_of_code::solution!(1);
@@ -8,17 +9,6 @@ pub fn part_one(input: &str) -> Option<u64> {
             panic!("negative numbers!")
         }
     }
-
-    let mut digits = HashMap::new();
-    digits.insert("one", 1);
-    digits.insert("two", 2);
-    digits.insert("three", 3);
-    digits.insert("four", 4);
-    digits.insert("five", 5);
-    digits.insert("six", 6);
-    digits.insert("seven", 7);
-    digits.insert("eight", 8);
-    digits.insert("nine", 9);
 
     let sum = input
         .split("\n")
@@ -58,8 +48,26 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(sum)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<u64> {
+    let mut digits = HashMap::new();
+    digits.insert("one", 1);
+    digits.insert("two", 2);
+    digits.insert("three", 3);
+    digits.insert("four", 4);
+    digits.insert("five", 5);
+    digits.insert("six", 6);
+    digits.insert("seven", 7);
+    digits.insert("eight", 8);
+    digits.insert("nine", 9);
+
+    let sum = input
+        .split("\n")
+        .map(|frag| parse_frag(frag, &digits))
+        .fold(0, |mut acc, num| {
+            acc += num;
+            acc
+        });
+    Some(sum)
 }
 
 #[cfg(test)]
