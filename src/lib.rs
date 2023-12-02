@@ -3,6 +3,7 @@ pub mod template;
 pub use day::*;
 use regex::Regex;
 use std::collections::HashMap;
+pub mod day_2;
 
 pub fn parse_frag(frag: &str, digits: &HashMap<&str, u64>) -> u64 {
     let first_str = find_first(frag).unwrap();
