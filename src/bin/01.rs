@@ -1,5 +1,6 @@
-use advent_of_code::parse_frag;
 use std::collections::HashMap;
+
+use advent_of_code::day_1::parse_frag;
 
 advent_of_code::solution!(1);
 

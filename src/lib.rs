@@ -2,39 +2,98 @@ mod day;
 pub mod template;
 pub use day::*;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+pub mod day_1;
 pub mod day_2;
+pub mod day_3;
 
-pub fn parse_frag(frag: &str, digits: &HashMap<&str, u64>) -> u64 {
-    let first_str = find_first(frag).unwrap();
-    let first = if let Ok(num) = u64::from_str_radix(first_str, 10) {
-        num
-    } else {
-        *digits.get(&first_str).unwrap()
-    };
-    let last_str = find_last(frag).unwrap();
-    let last = if let Ok(num) = u64::from_str_radix(&last_str, 10) {
-        num
-    } else {
-        *digits.get(last_str.as_str()).unwrap()
-    };
-    u64::from_str_radix(&format!("{}{}", first.to_string(), last.to_string()), 10).unwrap()
+pub fn parse_hay(hay: &str) -> HashMap<&str, Vec<MyMatch>> {
+    let re = Regex::new(r"(?<num>\d+)|(?<symbol>[^0-9\n\.])").unwrap();
+    let mut mtchs = HashMap::new();
+    mtchs.insert("num", vec![]);
+    mtchs.insert("symbol", vec![]);
+    re.captures_iter(hay).for_each(|c| {
+        for name in ["num", "symbol"] {
+            if let Some(mtch) = c.name(name) {
+                mtchs.get_mut(name).unwrap().push(MyMatch {
+                    start: mtch.start(),
+                    end: mtch.end(),
+                    string: mtch.as_str().to_string(),
+                });
+            }
+        }
+    });
+    mtchs
 }
 
-pub fn find_first(frag: &str) -> Option<&str> {
-    let re = Regex::new(r"[0-9]|one|two|three|four|five|six|seven|eight|nine").unwrap();
-    Some(re.find(frag)?.as_str())
+#[derive(Debug, Clone, PartialEq)]
+pub struct MyMatch {
+    pub start: usize,
+    pub end: usize,
+    pub string: String,
 }
 
-pub fn find_last(frag: &str) -> Option<String> {
-    let re = Regex::new(r"[0-9]|eno|owt|eerht|ruof|evif|xis|neves|thgie|enin").unwrap();
-    Some(
-        re.find(&frag.chars().rev().collect::<String>())?
-            .as_str()
-            .chars()
-            .rev()
-            .collect::<String>(),
-    )
+pub fn dims(hay: &str) -> (usize, usize) {
+    let chunks = hay.split_inclusive("\n").collect::<Vec<_>>();
+    (chunks.len(), chunks[0].chars().count())
+}
+
+pub fn coords(i: usize, dims: (usize, usize)) -> Coord {
+    let y = i / dims.1;
+    let x = i - (y * dims.1);
+    Coord {
+        x: i64::try_from(x).unwrap(),
+        y: i64::try_from(y).unwrap(),
+        dims,
+    }
+}
+
+/// zero indexed
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Coord {
+    pub x: i64,
+    pub y: i64,
+    pub dims: (usize, usize),
+}
+
+impl Coord {
+    pub fn adj(&self) -> HashSet<Coord> {
+        let (x, y) = (self.x, self.y);
+        let mut set = HashSet::new();
+        for c in [
+            (x - 1, y - 1),
+            (x, y - 1),
+            (x + 1, y - 1),
+            (x - 1, y),
+            (x + 1, y),
+            (x - 1, y + 1),
+            (x, y + 1),
+            (x + 1, y + 1),
+        ] {
+            let coord_cand = Coord {
+                x: c.0,
+                y: c.1,
+                dims: self.dims,
+            };
+            if self.on_grid(&coord_cand) {
+                set.insert(coord_cand);
+            }
+        }
+        set
+    }
+
+    fn on_grid(&self, coord: &Coord) -> bool {
+        if coord.x < 0 || coord.y < 0 {
+            return false;
+        }
+        // coords are 0-indexed, dims are 1-indexed
+        if coord.x + 1 > i64::try_from(self.dims.1).unwrap()
+            || coord.y + 1 > i64::try_from(self.dims.0).unwrap()
+        {
+            return false;
+        }
+        true
+    }
 }
 
 #[cfg(test)]
@@ -42,32 +101,94 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_find_first() {
-        assert_eq!("5", find_first("fh5one7twokkk").unwrap());
-        assert_eq!("three", find_first("fhoonthreetwokkk").unwrap());
-        assert_eq!("two", find_first("jdhitwone").unwrap());
-    }
-
-    #[test]
-    fn test_find_last() {
-        assert_eq!("two", &find_last("fh5one7twokkk").unwrap());
-        assert_eq!("one", &find_last("fhoonthreetwonek").unwrap());
-        assert_eq!("7", &find_last("7jdhitwpnnn").unwrap());
-    }
-
-    #[test]
     fn test_parse_frag() {
-        let mut digits = HashMap::new();
-        digits.insert("one", 1);
-        digits.insert("two", 2);
-        digits.insert("three", 3);
-        digits.insert("four", 4);
-        digits.insert("five", 5);
-        digits.insert("six", 6);
-        digits.insert("seven", 7);
-        digits.insert("eight", 8);
-        digits.insert("nine", 9);
-        let subject = "1twone3foursixiii";
-        assert_eq!(16_u64, parse_frag(subject, &digits));
+        let subject = "16+....89\n16...#.89";
+        let map = parse_hay(subject);
+        // println!("{:?}", map["symbol"]);
+        assert_eq!(4, map["num"].len());
+        // test exclusion of \n char
+        assert_eq!(2, map["symbol"].len());
+    }
+
+    #[test]
+    fn test_dims() {
+        let subject = "467..114..
+        ...*......
+        ..35..633.
+        ......#...
+        617*......
+        .....+.58.
+        ..592.....
+        ......755.
+        ...$.*....";
+        let dims = dims(subject);
+        // dims includes the \n char, so this unit test looks like it should
+        // be (9,10), because the \n chars are hidden by the code editor.
+        assert_eq!((9, 11), dims);
+    }
+
+    #[test]
+    fn test_cords() {
+        assert_eq!(
+            Coord {
+                y: 0,
+                x: 0,
+                dims: (5, 5)
+            },
+            coords(0, (5, 5))
+        );
+        assert_eq!(
+            Coord {
+                y: 0,
+                x: 3,
+                dims: (5, 5)
+            },
+            coords(3, (5, 5))
+        );
+        assert_eq!(
+            Coord {
+                y: 0,
+                x: 4,
+                dims: (5, 5)
+            },
+            coords(4, (5, 5))
+        );
+        assert_eq!(
+            Coord {
+                y: 1,
+                x: 0,
+                dims: (5, 5)
+            },
+            coords(5, (5, 5))
+        );
+        assert_eq!(
+            Coord {
+                y: 1,
+                x: 1,
+                dims: (5, 5)
+            },
+            coords(6, (5, 5))
+        );
+        assert_eq!(
+            Coord {
+                y: 1,
+                x: 4,
+                dims: (5, 5)
+            },
+            coords(9, (5, 5))
+        );
+    }
+
+    #[test]
+    fn test_adj() {
+        let coord = Coord {
+            x: 1,
+            y: 1,
+            dims: (3, 3),
+        };
+        let adj = coord.adj();
+        for c in adj.iter() {
+            println!("{:?}", [c.x, c.y])
+        }
     }
 }
