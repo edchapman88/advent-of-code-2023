@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 pub mod day_1;
 pub mod day_2;
 pub mod day_3;
+pub mod day_4;
 
 pub fn parse_hay(hay: &str) -> HashMap<&str, Vec<MyMatch>> {
     let re = Regex::new(r"(?<num>\d+)|(?<symbol>[^0-9\n\.])").unwrap();
